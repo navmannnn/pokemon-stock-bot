@@ -2,12 +2,20 @@ name: Run Pokemon Bot
 
 on:
   schedule:
-    - cron: '5,10 * * * *'
+    # Runs on off-peak minutes to avoid server rush hour queues
+    - cron: '5,10,20,30,40,50 * * * *'
   workflow_dispatch:
+
+# FIXES EXIT CODE 128: Explicitly grants the bot permission to save its memory file
+permissions:
+  contents: write
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    env:
+      # FIXES WARNING: Forces the runner to use the updated Node.js 24 environment
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
