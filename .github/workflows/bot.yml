@@ -2,8 +2,7 @@ name: Run Pokemon Bot
 
 on:
   schedule:
-    # Runs the check every 2 minutes, 24/7
-    - cron: '*/5 * * * *'
+    - cron: '5,10 * * * *'
   workflow_dispatch:
 
 jobs:
