@@ -55,7 +55,7 @@ def main():
             response = scraper.get(url, timeout=15)
             
             # Regex sniper scan: Extracts potential text matches
-            matches = re.findall(r'(?i)(?:pokemon|pokémon)[^"<\\]{10,100}', response.text)
+            matches = re.findall(r'(?i)(?:pokemon|pokémon)[a-zA-Z0-9\s\-\:\'\&\.\(\)]{5,80}', response.text)
             products = set([match.strip() for match in matches])
             
             for product in products:
