@@ -1,8 +1,9 @@
 name: Run Pokemon Bot
 
 on:
-  schedule:
-    - cron: '5,10,20,30,40,50 * * * *'
+schedule:
+    # Runs exactly at the top of the hour, 15 past, 30 past, 45 past, and 50 past
+    - cron: '0,15,30,45,50 * * * *'
   workflow_dispatch:
 
 permissions:
