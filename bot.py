@@ -1,19 +1,16 @@
 import os
 import re
 import requests
+import urllib.parse
 
 # Securely pulls your webhook from GitHub Secrets
 WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK")
 
-# The 4 reliable stores
+# Sticking to JB Hi-Fi since it doesn't hard-block GitHub servers
 STORES = {
-    "JB Hi-Fi": "https://www.jbhifi.com.au/search?query=pokemon%20tcg&sortBy=published_at_desc",
-    "Kmart": "https://www.kmart.com.au/search/?searchTerm=pokemon%20tcg&sortBy=newest&f.Shops=Kmart&f.Shops=Target",
-    "Big W": "https://www.bigw.com.au/toys/trading-cards/pokemon-trading-cards/c/681510201?sort=new",
-    "Target": "https://www.target.com.au/search?text=pokemon+tcg&page=1&sortBy=onlinedate&sortOrder=descending"
+    "JB Hi-Fi": "https://www.jbhifi.com.au/search?query=pokemon%20tcg&sortBy=published_at_desc"
 }
 
-# Items containing these words will be dropped automatically
 BLOCKLIST = ["portfolio", "sleeves", "pages", "deck box", "binder", "album", "protector", "frame", "folder"]
 
 def send_discord_alert(store, product_name, url):
@@ -32,6 +29,15 @@ def save_seen_items(seen_items):
     with open("seen_items.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(seen_items))
 
+def clean_product_name(raw_text):
+    # Decodes URL characters like %22 into "
+    decoded = urllib.parse.unquote(raw_text)
+    # Strips out any leftover JSON/HTML junk codes
+    cleaned = re.sub(r'[^a-zA-Z0-9\s\-\:\'\&\.\(\)]', '', decoded)
+    # Removes words like 'name' or 'title' if they got caught in the crossfire
+    cleaned = re.sub(r'\b(name|title|product|displayName)\b', '', cleaned, flags=re.IGNORECASE)
+    return ' '.join(cleaned.split())
+
 def main():
     seen_items = load_seen_items()
     new_items_found = False
@@ -44,32 +50,36 @@ def main():
         try:
             response = requests.get(url, headers=headers, timeout=10)
             
-            # STRICT REGEX: Only extracts clean, human-readable text. Ignores URL code and JSON.
-            matches = re.findall(r'(?i)(?:pokemon|pokémon)[a-zA-Z0-9\s\-\:\'\&\.\(\)]{5,80}', response.text)
-            products = set(matches)
+            # Grabs the text around the pokemon keywords inside the raw JSON code
+            matches = re.findall(r'(?i)(?:pokemon|pokémon)[^"<\\]{10,70}', response.text)
             
-            for product in products:
+            for raw_match in set(matches):
+                product = clean_product_name(raw_match)
                 product_lower = product.lower()
                 
-                # 1. ALLOWLIST: Discards Magic, One Piece, Dragon Ball
+                # Verify it's a valid title length after cleaning
+                if len(product) < 10 or len(product) > 80:
+                    continue
+                
+                # 1. ALLOWLIST
                 if "pokemon" not in product_lower and "pokémon" not in product_lower:
                     continue
                 
-                # 2. BLOCKLIST: Discards accessories
+                # 2. BLOCKLIST
                 if any(blocked in product_lower for blocked in BLOCKLIST):
                     continue
                 
-                # 3. MEMORY CHECK: Only triggers alerts for completely unseen listings
+                # 3. MEMORY CHECK
                 if product not in seen_items:
                     send_discord_alert(store, product, url)
                     seen_items.add(product)
                     new_items_found = True
 
         except Exception as e:
-            print(f"Skipping {store} due to a connection error.")
+            print(f"Skipping {store} due to an error.")
 
     if new_items_found:
         save_seen_items(seen_items)
 
 if __name__ == "__main__":
-    main
+    main()
