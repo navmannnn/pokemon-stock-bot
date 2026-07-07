@@ -1,3 +1,4 @@
 
+pokemon 30th celebration
 pokemon-merchicon:isBold:falseisMainCollection:
 pokemon-trading-cardsicon:isBold:falseisMainCollec
